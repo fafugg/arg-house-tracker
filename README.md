@@ -54,22 +54,91 @@ Deploy your own instance to [Railway](https://railway.app) with one click:
 
 ---
 
-### Option C — Manual *(Python 3.11+)*
+### Option C — Manual *(Python 3.11+, Linux)*
+
+#### 1. Install system dependencies
+
+```bash
+# Debian/Ubuntu
+sudo apt update && sudo apt install -y python3 python3-venv python3-pip git
+
+# Playwright browser dependencies (required for headless Chrome)
+sudo apt install -y libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 \
+  libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 \
+  libgbm1 libpango-1.0-0 libcairo2 libasound2t64 libwayland-client0
+
+# Fedora/RHEL
+sudo dnf install -y python3 python3-virtualenv git
+sudo dnf install -y nss atk at-spi2-atk cups-libs libdrm libxkbcommon \
+  libXcomposite libXdamage libXfixes libXrandr mesa-libgbm pango cairo alsa-lib wayland-libclient
+
+# Arch Linux
+sudo pacman -S python python-virtualenv git
+
+# Playwright browser dependencies
+sudo pacman -S nss atk at-spi2-core cups libdrm libxkbcommon libxcomposite \
+  libxdamage libxfixes libxrandr mesa pango cairo alsa-lib
+```
+
+#### 2. Clone and set up the project
 
 ```bash
 git clone https://github.com/YOUR_USERNAME/casa-tracker.git
 cd casa-tracker/backend
 
-python -m venv .venv
-source .venv/bin/activate        # Windows: .venv\Scripts\activate
+# Create virtual environment
+python3 -m venv .venv
 
-pip install -r requirements.txt
-playwright install chromium
+# Install Python dependencies
+.venv/bin/pip install -r requirements.txt
 
-uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+# Install Playwright Chromium browser (~180 MB download)
+.venv/bin/playwright install chromium
+```
+
+#### 3. Run the app
+
+```bash
+.venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 Open **http://localhost:8000**.
+
+#### 4. (Optional) Run as a background service
+
+To keep the app running after closing the terminal:
+
+```bash
+# Option A: nohup
+nohup .venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000 > /tmp/casa-tracker.log 2>&1 &
+
+# Option B: systemd user service
+mkdir -p ~/.config/systemd/user
+cat > ~/.config/systemd/user/casa-tracker.service << 'EOF'
+[Unit]
+Description=Casa Tracker
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/casa-tracker/backend
+ExecStart=%h/casa-tracker/backend/.venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000
+Restart=on-failure
+
+[Install]
+WantedBy=default.target
+EOF
+
+systemctl --user daemon-reload
+systemctl --user enable --now casa-tracker
+```
+
+#### 5. (Optional) Set environment variables
+
+```bash
+export OPENCAGE_API_KEY=your_key_here   # improves geocoding accuracy
+export DB_PATH=/path/to/db.json         # custom database location
+```
 
 ---
 
