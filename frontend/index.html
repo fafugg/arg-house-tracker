@@ -324,13 +324,13 @@
 
       <div class="w-px h-4 bg-slate-200 shrink-0 mx-1"></div>
 
-      <select x-model="filterReview" @change="tablePage = 1"
-        class="text-xs border border-slate-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white text-slate-700">
-        <option value="all">Revisión: todas</option>
+      <div class="flex gap-1">
         <template x-for="r in REVIEW_OPTIONS" :key="r.value">
-          <option :value="r.value" x-text="r.label"></option>
+          <button @click="toggleReviewFilter(r.value)"
+            :class="filterReview.includes(r.value) ? r.cls : 'bg-white text-slate-600 border border-slate-200'"
+            class="text-xs rounded-lg px-2 py-1.5 transition" x-text="r.label"></button>
         </template>
-      </select>
+      </div>
 
       <!-- Outer wrapper: full-width flex row on mobile (keeps Filtros + Tabla/Mapa
            on the same row), transparent on desktop (md:contents = children flow
@@ -1053,6 +1053,7 @@
 
 <script>
 const REVIEW_OPTIONS = [
+  { value: '',         label: 'A revisar',    cls: 'bg-gray-100 text-gray-600' },
   { value: 'en_duda',     label: 'En duda',     cls: 'bg-yellow-100 text-yellow-800' },
   { value: 'interesante', label: 'Interesante',  cls: 'bg-blue-100 text-blue-800' },
   { value: 'descartada',  label: 'Descartada',   cls: 'bg-orange-100 text-orange-800' },
@@ -1081,7 +1082,7 @@ function app() {
     _pollInterval: null,
     filterStatus: 'active',
     filterType: 'all',
-    filterReview: 'all',
+    filterReview: [],
     filterMaxPrice: '',
     filterAddress: '',
     filterRealEstate: '',
@@ -1150,7 +1151,9 @@ function app() {
       let list = [...this.houses];
       if (this.filterStatus !== 'all') list = list.filter(h => h.status === this.filterStatus);
       if (this.filterType !== 'all') list = list.filter(h => h.type === this.filterType);
-      if (this.filterReview !== 'all') list = list.filter(h => (h.review || '') === this.filterReview);
+      if (this.filterReview.length > 0 && this.filterReview.length < REVIEW_OPTIONS.length) {
+        list = list.filter(h => this.filterReview.includes(h.review || ''));
+      }
       if (this.filterMaxPrice) list = list.filter(h => !h.price || h.price <= parseFloat(this.filterMaxPrice));
       if (this.filterAddress) {
         const q = this._norm(this.filterAddress);
@@ -1527,7 +1530,7 @@ function app() {
 
     async goBack() {
       this.stopGeocoding();
-      this.filterReview = 'all';
+      this.filterReview = [];
       this.filterType = 'all';
       this.filterStatus = 'active';
       this.filterMaxPrice = '';
@@ -1600,7 +1603,7 @@ function app() {
           this.startPolling();
         }
         this.tablePage = 1;
-        this.filterReview = 'all';
+        this.filterReview = [];
         this.filterType = 'all';
         this.filterStatus = 'active';
         this.filterMaxPrice = '';
@@ -1839,6 +1842,13 @@ function app() {
           body: JSON.stringify({ review: value }),
         });
       } catch (e) { console.error('Error saving review', e); }
+    },
+
+    toggleReviewFilter(val) {
+      const i = this.filterReview.indexOf(val);
+      if (i !== -1) this.filterReview = this.filterReview.filter(v => v !== val);
+      else this.filterReview = [...this.filterReview, val];
+      this.tablePage = 1;
     },
 
     async triggerRun() {
